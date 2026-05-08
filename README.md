@@ -16,9 +16,19 @@ To deploy ZSH on a new machine or node:
 bash scripts/install.sh [TARGET_USER]
 ```
 
+**Remote Execution (One-Liner):**
+```bash
+sudo bash -c "$(curl -sSL https://raw.githubusercontent.com/kpihx-labs/zsh/master/scripts/install.sh)"
+```
+
 ### Purge
 To purge the ZSH environment (interactive by default):
 ```bash
 bash scripts/purge.sh [-y] [TARGET_USER]
+```
+
+**Remote Purge (One-Liner):**
+```bash
+sudo bash -c "$(curl -sSL https://raw.githubusercontent.com/kpihx-labs/zsh/master/scripts/purge.sh)"
 ```
 The purge cycle will ask for confirmation before removing intermediate tools (`make`, `curl`, `micro`, etc.) and finish with `zsh` itself. Use `-y` to skip confirmations.
