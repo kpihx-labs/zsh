@@ -22,6 +22,8 @@ echo "--- STARTING TOTAL PURGE OF ZSH ENVIRONMENT FOR $TARGET_USER ---"
 
 confirm() {
     local msg=$1
+    # Flush stdin to prevent accidental confirmations from previous command buffers
+    while read -t 0.1 -n 10000; do :; done || true
     read -p "$msg [y/N]: " resp
     if [[ "$resp" =~ ^[Yy]$ ]]; then
         return 0
@@ -53,7 +55,6 @@ ARTIFACTS=(
 
 echo "Checking for configuration debris in $HOME_DIR..."
 for item in "${ARTIFACTS[@]}"; do
-    # Check if anything matches the pattern
     # We use sudo -u to perform the check as the user to handle wildcards correctly
     MATCHES=$(sudo -u "$TARGET_USER" bash -c "ls -d ${HOME_DIR}/${item} 2>/dev/null || true")
     if [[ -n "$MATCHES" ]]; then
@@ -68,24 +69,22 @@ done
 # --- 3. Package Purge ---------------------------------------------------------
 purge_package() {
     local pkg=$1
-    # Check if command exists OR if package is explicitly installed in dpkg database
-    if command -v "$pkg" >/dev/null 2>&1 || dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-        if confirm "Uninstall/PURGE package '$pkg' and its system-wide configs?"; then
+    # In TOTAL PURGE mode, we ask for every package in the ecosystem list
+    # Regardless of whether the script thinks it's there or not.
+    if confirm "Uninstall/PURGE package '$pkg' and its system-wide configs?"; then
+        if dpkg -l "$pkg" >/dev/null 2>&1; then
             sudo apt-get purge -y "$pkg"
+        else
+            echo "Package $pkg not found in apt database. Skipping binary removal."
         fi
     fi
 }
 
 echo "Starting system package purge check..."
 # Order: tools first, core shell last
-purge_package "micro"
-purge_package "make"
-purge_package "curl"
-purge_package "fzf"
-purge_package "bc"
-purge_package "trash-cli"
-purge_package "git"
-purge_package "zsh"
+for p in "micro" "make" "curl" "fzf" "bc" "trash-cli" "git" "zsh"; do
+    purge_package "$p"
+done
 
 # --- 4. Final Cleanup ---------------------------------------------------------
 if confirm "Run apt-get autoremove to clean up orphaned dependencies?"; then
