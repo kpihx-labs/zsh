@@ -1,26 +1,16 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# KpihX ZSH Environment Purge Utility
+# KpihX ZSH Environment TOTAL PURGE Utility
 # ==============================================================================
-# Safely reverts shell to bash and removes all Zsh/Oh-My-Zsh artifacts.
-# Usage: sudo ./purge.sh [-y] [TARGET_USER]
+# Safely reverts shell to bash and removes ALL Zsh/Oh-My-Zsh artifacts.
+# Includes ALL dependencies installed during setup.
+# WARNING: This script is 100% INTERACTIVE for safety.
 # ==============================================================================
 
 set -euo pipefail
 
 # --- Configuration ------------------------------------------------------------
-YES_TO_ALL=false
-USER_ARG=""
-
-for arg in "$@"; do
-    if [[ "$arg" == "-y" ]]; then
-        YES_TO_ALL=true
-    else
-        USER_ARG="$arg"
-    fi
-done
-
-TARGET_USER="${USER_ARG:-${SUDO_USER:-$USER}}"
+TARGET_USER="${1:-${SUDO_USER:-$USER}}"
 HOME_DIR=$(getent passwd "$TARGET_USER" | cut -d: -f6)
 
 if [[ -z "$HOME_DIR" ]]; then
@@ -28,54 +18,82 @@ if [[ -z "$HOME_DIR" ]]; then
     exit 1
 fi
 
-echo "--- Starting deep purge of ZSH for $TARGET_USER ---"
+echo "--- STARTING TOTAL PURGE OF ZSH ENVIRONMENT FOR $TARGET_USER ---"
 
 confirm() {
-    if [[ "$YES_TO_ALL" == "true" ]]; then return 0; fi
-    read -p "$1 (y/N): " response
-    [[ "$response" =~ ^[Yy]$ ]]
+    local msg=$1
+    read -p "$msg [y/N]: " resp
+    if [[ "$resp" =~ ^[Yy]$ ]]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
-# --- 1. Revert Shell to Bash --------------------------------------------------
-BASH_PATH=$(command -v bash)
+# --- 1. Shell Reversion -------------------------------------------------------
+BASH_PATH=$(command -v bash || echo "/bin/bash")
 CURRENT_SHELL=$(getent passwd "$TARGET_USER" | cut -d: -f7)
 
-if [[ "$CURRENT_SHELL" != "$BASH_PATH" ]]; then
+if [[ "$CURRENT_SHELL" =~ "zsh" ]]; then
     if confirm "Revert default shell to bash for $TARGET_USER?"; then
         sudo chsh -s "$BASH_PATH" "$TARGET_USER"
     fi
 fi
 
-# --- 2. Remove Config Files & Folders -----------------------------------------
+# --- 2. Comprehensive Artifact Cleanup ----------------------------------------
 ARTIFACTS=(
+    ".oh-my-zsh"
     ".zshrc"
     ".zshrc.pre-oh-my-zsh"
-    ".oh-my-zsh"
-    ".zcompdump*"
+    ".zshrc.pre-oh-my-zsh-*"
     ".zsh_history"
     ".zsh_sessions"
+    ".zcompdump*"
 )
 
-if confirm "Delete ZSH configuration files and Oh-My-Zsh folder in $HOME_DIR?"; then
-    for item in "${ARTIFACTS[@]}"; do
-        # Use a subshell to expand wildcards correctly in user home
-        sudo -u "$TARGET_USER" bash -c "rm -rf ${HOME_DIR}/${item}"
-    done
-fi
-
-# --- 3. Uninstall Zsh Package -------------------------------------------------
-if command -v zsh >/dev/null || dpkg -l | grep -qw zsh; then
-    if confirm "Uninstall/Purge 'zsh' package from system?"; then
-        sudo apt-get purge -y zsh
+echo "Checking for configuration debris in $HOME_DIR..."
+for item in "${ARTIFACTS[@]}"; do
+    # Check if anything matches the pattern
+    # We use sudo -u to perform the check as the user to handle wildcards correctly
+    MATCHES=$(sudo -u "$TARGET_USER" bash -c "ls -d ${HOME_DIR}/${item} 2>/dev/null || true")
+    if [[ -n "$MATCHES" ]]; then
+        for match in $MATCHES; do
+            if confirm "Remove debris: $match?"; then
+                sudo rm -rf "$match"
+            fi
+        done
     fi
-fi
+done
 
-# --- 4. Cleanup ---------------------------------------------------------------
-if confirm "Run apt-get autoremove to clean dependencies?"; then
+# --- 3. Package Purge ---------------------------------------------------------
+purge_package() {
+    local pkg=$1
+    # Check if package is installed via dpkg (more reliable than command -v for purge)
+    if dpkg -l | grep -qw "$pkg"; then
+        if confirm "Uninstall/PURGE package '$pkg' and its system-wide configs?"; then
+            sudo apt-get purge -y "$pkg"
+        fi
+    fi
+}
+
+echo "Starting system package purge check..."
+# Order: tools first, core shell last
+purge_package "micro"
+purge_package "make"
+purge_package "curl"
+purge_package "fzf"
+purge_package "bc"
+purge_package "trash-cli"
+purge_package "git"
+purge_package "zsh"
+
+# --- 4. Final Cleanup ---------------------------------------------------------
+if confirm "Run apt-get autoremove to clean up orphaned dependencies?"; then
     sudo apt-get autoremove -y
 fi
 
 echo "=============================================================================="
-echo " SUCCESS: ZSH purge complete for $TARGET_USER."
-echo " IMPORTANT: Please log out and back in to finalize the shell transition."
+echo " TOTAL PURGE CYCLE COMPLETE FOR $TARGET_USER."
+echo " All selected debris and packages have been removed."
+echo " Please log out and back in to finalize the environment transition."
 echo "=============================================================================="
