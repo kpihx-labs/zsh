@@ -6,7 +6,7 @@ This directory contains the unified and agnostic ZSH configuration for the KpihX
 
 - **`assets/zshrc.template`**: The `.zshrc` configuration template. It has been refined to be 100% independent. Calls to specific paths (like Linuxbrew, pyenv, or waydroid) are conditioned to only activate if they actually exist on the target machine.
 - **`scripts/install.sh`**: Automated installation script. It installs ZSH, Oh-My-Zsh (non-interactive), necessary plugins, and essential tools like `curl`, `micro`, and `make`.
-- **`scripts/purge.sh`**: Interactive purge utility. Reverts the shell to bash, removes Oh-My-Zsh, and uninstalls associated tools. Supports `-y` for non-interactive cleanup.
+- **`scripts/purge.sh`**: TOTAL purge utility. Reverts the shell to bash, removes Oh-My-Zsh (and all debris like history/backups), and uninstalls associated tools. **100% interactive for safety.**
 
 ## Usage
 
@@ -22,13 +22,13 @@ sudo bash -c "$(curl -sSL https://raw.githubusercontent.com/kpihx-labs/zsh/maste
 ```
 
 ### Purge
-To purge the ZSH environment (interactive by default):
+To purge the ZSH environment (TOTAL cleanup):
 ```bash
-bash scripts/purge.sh [-y] [TARGET_USER]
+bash scripts/purge.sh [TARGET_USER]
 ```
 
 **Remote Purge (One-Liner):**
 ```bash
 sudo bash -c "$(curl -sSL https://raw.githubusercontent.com/kpihx-labs/zsh/master/scripts/purge.sh)"
 ```
-The purge cycle will ask for confirmation before removing intermediate tools (`make`, `curl`, `micro`, etc.) and finish with `zsh` itself. Use `-y` to skip confirmations.
+The purge cycle is 100% interactive. It will ask for confirmation before removing debris, intermediate tools (`make`, `curl`, `micro`, `git`, etc.), and finish with `zsh` itself.
