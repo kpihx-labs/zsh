@@ -68,8 +68,8 @@ done
 # --- 3. Package Purge ---------------------------------------------------------
 purge_package() {
     local pkg=$1
-    # Check if command exists OR if package is explicitly listed as installed/config-present in dpkg
-    if command -v "$pkg" >/dev/null 2>&1 || dpkg -l "$pkg" 2>/dev/null | grep -qE "^ii|^rc"; then
+    # Check if command exists OR if package is explicitly installed in dpkg database
+    if command -v "$pkg" >/dev/null 2>&1 || dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
         if confirm "Uninstall/PURGE package '$pkg' and its system-wide configs?"; then
             sudo apt-get purge -y "$pkg"
         fi
