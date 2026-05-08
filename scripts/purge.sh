@@ -22,8 +22,6 @@ echo "--- STARTING TOTAL PURGE OF ZSH ENVIRONMENT FOR $TARGET_USER ---"
 
 confirm() {
     local msg=$1
-    # Flush stdin to prevent accidental confirmations from previous command buffers
-    while read -t 0.1 -n 10000; do :; done || true
     read -p "$msg [y/N]: " resp
     if [[ "$resp" =~ ^[Yy]$ ]]; then
         return 0
@@ -43,56 +41,47 @@ if [[ "$CURRENT_SHELL" =~ "zsh" ]]; then
 fi
 
 # --- 2. Comprehensive Artifact Cleanup ----------------------------------------
-ARTIFACTS=(
-    ".oh-my-zsh"
-    ".zshrc"
-    ".zshrc.pre-oh-my-zsh"
-    ".zshrc.pre-oh-my-zsh-*"
-    ".zsh_history"
-    ".zsh_sessions"
-    ".zcompdump*"
-)
-
 echo "Checking for configuration debris in $HOME_DIR..."
-for item in "${ARTIFACTS[@]}"; do
-    # We use sudo -u to perform the check as the user to handle wildcards correctly
-    MATCHES=$(sudo -u "$TARGET_USER" bash -c "ls -d ${HOME_DIR}/${item} 2>/dev/null || true")
-    if [[ -n "$MATCHES" ]]; then
-        for match in $MATCHES; do
-            if confirm "Remove debris: $match?"; then
-                sudo rm -rf "$match"
-            fi
-        done
-    fi
-done
+
+if [ -d "$HOME_DIR/.oh-my-zsh" ]; then
+    if confirm "Remove Oh-My-Zsh directory?"; then sudo rm -rf "$HOME_DIR/.oh-my-zsh"; fi
+fi
+
+if [ -f "$HOME_DIR/.zshrc" ]; then
+    if confirm "Remove .zshrc?"; then sudo rm -f "$HOME_DIR/.zshrc"; fi
+fi
+
+if [ -f "$HOME_DIR/.zsh_history" ]; then
+    if confirm "Remove .zsh_history?"; then sudo rm -f "$HOME_DIR/.zsh_history"; fi
+fi
+
+# Wildcard cleanup for completion and backups
+sudo -u "$TARGET_USER" bash -c "rm -f ${HOME_DIR}/.zcompdump* ${HOME_DIR}/.zshrc.pre-oh-my-zsh*" || true
 
 # --- 3. Package Purge ---------------------------------------------------------
 purge_package() {
     local pkg=$1
-    # In TOTAL PURGE mode, we ask for every package in the ecosystem list
-    # Regardless of whether the script thinks it's there or not.
-    if confirm "Uninstall/PURGE package '$pkg' and its system-wide configs?"; then
-        if dpkg -l "$pkg" >/dev/null 2>&1; then
-            sudo apt-get purge -y "$pkg"
-        else
-            echo "Package $pkg not found in apt database. Skipping binary removal."
-        fi
+    if confirm "Uninstall/PURGE package '$pkg'?"; then
+        sudo apt-get purge -y "$pkg" 2>/dev/null || echo "Package $pkg not found or could not be purged."
     fi
 }
 
 echo "Starting system package purge check..."
-# Order: tools first, core shell last
-for p in "micro" "make" "curl" "fzf" "bc" "trash-cli" "git" "zsh"; do
-    purge_package "$p"
-done
+purge_package "micro"
+purge_package "make"
+purge_package "curl"
+purge_package "fzf"
+purge_package "bc"
+purge_package "trash-cli"
+purge_package "git"
+purge_package "zsh"
 
 # --- 4. Final Cleanup ---------------------------------------------------------
-if confirm "Run apt-get autoremove to clean up orphaned dependencies?"; then
+if confirm "Run apt-get autoremove?"; then
     sudo apt-get autoremove -y
 fi
 
 echo "=============================================================================="
 echo " TOTAL PURGE CYCLE COMPLETE FOR $TARGET_USER."
 echo " All selected debris and packages have been removed."
-echo " Please log out and back in to finalize the environment transition."
 echo "=============================================================================="
