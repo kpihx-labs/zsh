@@ -9,7 +9,11 @@
 set -euo pipefail
 
 # --- Configuration ------------------------------------------------------------
-TARGET_USER="${1:-$USER}"
+# Resolve target user: 
+# 1. Argument $1
+# 2. $SUDO_USER (if running via sudo)
+# 3. Current $USER
+TARGET_USER="${1:-${SUDO_USER:-$USER}}"
 # Resolve home directory safely without assuming /home/
 HOME_DIR=$(getent passwd "$TARGET_USER" | cut -d: -f6)
 TEMPLATE_PATH="${2:-$(dirname "$0")/../assets/zshrc.template}"
