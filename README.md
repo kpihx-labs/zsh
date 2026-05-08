@@ -31,4 +31,6 @@ bash scripts/purge.sh [TARGET_USER]
 ```bash
 sudo bash -c "$(curl -sSL https://raw.githubusercontent.com/kpihx-labs/zsh/master/scripts/purge.sh)"
 ```
-The purge cycle is 100% interactive. It will ask for confirmation before removing debris, intermediate tools (`make`, `curl`, `micro`, `git`, etc.), and finish with `zsh` itself.
+
+> [!IMPORTANT]
+> The purge script is **100% interactive**. It will explicitly ask for confirmation before removing each package (zsh, micro, git, etc.) and each debris item (.oh-my-zsh, .zshrc, etc.).
