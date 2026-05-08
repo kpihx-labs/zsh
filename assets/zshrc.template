@@ -1,0 +1,86 @@
+#!/usr/bin/env zsh
+#   _________  _   _ ____   ____ 
+#  |__  / ___|| | | |  _ \ / ___|
+#    / /\___ \| |_| | |_) | |    
+# _ / /_ ___) |  _  |  _ <| |___ 
+# (_)____|____/|_| |_|_| \_\\____|
+#
+# Unified ZSH Configuration for KpihX-Labs
+
+# === PATH & Env Vars ===
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.bun/bin:$PATH"
+
+export PYTHON_CONFIGURE_OPTS="--enable-optimizations --with-lto"
+
+export EDITOR=micro
+
+# === Oh-My-Zsh Configuration ===
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="xiong-chiamiov-plus"
+plugins=( 
+    git
+    zsh-autosuggestions
+    zsh-syntax-highlighting
+    zsh-history-substring-search
+    colored-man-pages
+    colorize
+    command-not-found
+    alias-finder
+)
+source $ZSH/oh-my-zsh.sh
+
+# === Interactive Settings ===
+HISTCONTROL=ignoreboth
+HISTSIZE=1000
+HISTFILESIZE=2000
+setopt HIST_IGNORE_SPACE
+
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+
+# === Aliases ===
+alias ll='ls -alF'
+alias la='ls -a'
+alias l='ls -CF'
+alias rm='trash-put'
+alias docker-clean="sudo aa-remove-unknown && docker system prune -f"
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*\([0-9]\+\s*\)|[;&|]\s*alert$//'\'')"'
+
+alias -g F=" | fzf"
+alias -g G=" | grep"
+alias -s pdf="evince "
+alias -s py="python3 "
+alias calc="noglob _calc"
+alias C="calc"
+_calc() {
+    echo "scale=10; $*" | bc -l
+}
+
+# === FZF History Widget ===
+fzf-history-widget() {
+  local selected=$(fc -rl 1 | awk '{sub("^[ ]*[^ ]+[ ]+","",$0);if(!seen[$0]++){print $0}}' | fzf --height 40% --layout=reverse --border --query="$LBUFFER" --bind 'ctrl-c:abort')
+  if [ -n "$selected" ]; then
+    LBUFFER="${selected}"
+  fi
+  zle redisplay
+}
+zle -N fzf-history-widget
+bindkey '^R' fzf-history-widget
+
+# === OMZ Plugins Config ===
+zstyle ':omz:plugins:alias-finder' autoload yes
+zstyle ':omz:plugins:alias-finder' longer yes
+zstyle ':omz:plugins:alias-finder' exact yes
+zstyle ':omz:plugins:alias-finder' cheaper yes
+
+# Optional zsh-interactive-cd if present
+[ -f ~/.oh-my-zsh/plugins/zsh-interactive-cd/zsh-interactive-cd.plugin.zsh ] && source ~/.oh-my-zsh/plugins/zsh-interactive-cd/zsh-interactive-cd.plugin.zsh
+
+# To change the cursor to |
+print -n '\e[5 q'
